@@ -636,39 +636,44 @@
       return;
     }
 
-    // ── Aquí conectas con tu Google Apps Script ───────────
-    // Opción A — Google Forms embed: abre el forms en un iframe oculto
-    // Opción B — Apps Script Web App: fetch POST a tu URL de deployment
-    //
-    // Ejemplo con Web App (descomenta y pon tu URL):
-    //
-    // const btn = document.getElementById('submitBtn');
-    // btn.disabled = true;
-    // btn.innerHTML = '<span class="spinner"></span>Enviando...';
-    //
-    // const formData = new FormData(this);
-    // try {
-    //   const res = await fetch('TU_URL_DE_APPS_SCRIPT', {
-    //     method: 'POST', body: formData
-    //   });
-    //   if (res.ok) {
-    //     showToast('¡Ticket enviado! Revisa tu correo para la confirmación.');
-    //     this.reset(); fileName.classList.remove('visible');
-    //   } else { showToast('Error al enviar. Intenta de nuevo.', 'error'); }
-    // } catch { showToast('Error de conexión. Intenta de nuevo.', 'error'); }
-    // finally { btn.disabled = false; btn.textContent = 'Enviar Ticket'; }
-    //
-    // Por ahora mostramos el éxito visual para que puedas ver el diseño:
+    // ── Envío real a Google Apps Script Web App ──────────
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxXIQTZK-7z40o_HTaD_IV4x2bKtzPN5ZM-y9bliadjG2LnuP08VjQhY7jaZEl5GULY/exec';
+
     const btn = document.getElementById('submitBtn');
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span>Enviando...';
-    setTimeout(() => {
+
+    // Apps Script no soporta FormData directamente desde fetch externo,
+    // usamos URLSearchParams para enviar como application/x-www-form-urlencoded
+    const params = new URLSearchParams({
+      email:       document.getElementById('email').value,
+      empresa:     document.getElementById('empresa').value,
+      asunto:      document.getElementById('asunto').value,
+      descripcion: document.getElementById('descripcion').value
+    });
+
+    // Nota: el archivo adjunto no se puede subir directo desde HTML externo
+    // El usuario debe subir el archivo a Drive y pegar el link en descripcion,
+    // o usar el Google Forms original para adjuntos.
+
+    try {
+      // Apps Script requiere no-cors desde dominios externos
+      await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params.toString()
+      });
+      // no-cors siempre regresa opaque response, asumimos éxito si no hay excepción
       showToast('¡Ticket enviado! Recibirás un correo de confirmación.');
       document.getElementById('supportForm').reset();
       fileName.classList.remove('visible');
+    } catch (err) {
+      showToast('Error de conexión. Intenta de nuevo.', 'error');
+    } finally {
       btn.disabled = false;
       btn.textContent = 'Enviar Ticket';
-    }, 1800);
+    }
   });
 </script>
 </body>
